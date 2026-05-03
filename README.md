@@ -273,6 +273,14 @@ python -m app.api
 * `models/model_v1.pkl`
 * `models/model_v2.pkl`
 
+Протестировать работоспособность API можно двумя способами:
+
+```bash
+python -m pytest -q 
+# или
+PYTHONPATH=. pytest -q
+```
+
 ### 6.6 uWSGI и NGINX в production 
 
 Использование uWSGI и NGINX - это стандартная production-связка для веб-приложений:
