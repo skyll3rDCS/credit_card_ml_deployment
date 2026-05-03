@@ -131,15 +131,21 @@ with open("models/model_v1.onnx", "wb") as f:
 
 ## 6. Веб-сервис
 
-Сервис реализован с использованием фреймворка Flask и предоставляет два основных эндпоинта:
+Сервис реализован с использованием Flask и предоставляет два основных эндпоинта: `GET /health` и `POST /predict`.
 
 ### 6.1 GET /health
 
 Назначение:
 
-* проверка работоспособности сервиса.
+* проверка работоспособности сервиса
 
-Ответ:
+Пример запроса:
+
+```bash
+curl -s http://127.0.0.1:5000/health
+```
+
+Пример ответа:
 
 ```json
 {"status": "ok"}
@@ -151,48 +157,18 @@ with open("models/model_v1.onnx", "wb") as f:
 
 Назначение:
 
-* получение предсказания модели.
+* получение предсказания вероятности дефолта
+* поддержка A/B-маршрутизации между моделями `v1` и `v2`
 
-Формат запроса:
+Поддерживаются два формата запроса.
 
-* JSON-объект, содержащий значения признаков клиента.
-
-Формат ответа:
+#### Формат 1 
 
 ```json
 {
-  "prediction": 0,
-  "probability": 0.23
-}
-```
-
-где:
-
-* `prediction` - бинарное решение (0 или 1);
-* `probability` - оценка вероятности дефолта.
-
-### 6.3 Примеры запросов (`curl`)
-
-Сервис должен быть запущен локально или в Docker на порту **5000**.
-
-Проверка работоспособности:
-
-```bash
-curl -s http://127.0.0.1:5000/health
-```
-
-Пример ответа:
-
-```json
-{"status":"ok"}
-```
-
-Запрос предсказания (набор признаков без столбца `ID` и без целевой переменной `default.payment.next.month`):
-
-```bash
-curl -s -X POST http://127.0.0.1:5000/predict \
-  -H "Content-Type: application/json" \
-  -d '{
+  "user_id": "u1",
+  "model_version": "v1",
+  "features": {
     "LIMIT_BAL": 20000,
     "SEX": 2,
     "EDUCATION": 2,
@@ -216,12 +192,73 @@ curl -s -X POST http://127.0.0.1:5000/predict \
     "PAY_AMT4": 0,
     "PAY_AMT5": 0,
     "PAY_AMT6": 0
-  }'
+  }
+}
 ```
 
-В ответе ожидаются поля `prediction` и `probability`.
+Где:
 
-### 6.4 Локальный запуск (без Docker)
+* `user_id` - идентификатор пользователя для детерминированного распределения трафика;
+* `model_version` - необязательное поле (`v1` или `v2`) для явного выбора модели;
+* `features` - набор признаков клиента (без `ID` и без таргета `default.payment.next.month`).
+
+Если `model_version` не передан, версия модели выбирается автоматически (50/50) на основе хеширования `user_id`.
+
+#### Формат 2
+
+Допускается передача признаков в корне JSON (без поля `features`) для обратной совместимости.
+
+---
+
+### 6.3 Формат ответа `/predict`
+
+```json
+{
+  "request_id": "ab6e47a9-5415-4692-bb5a-523e79cca6e2",
+  "model_version": "v1",
+  "prediction": 1,
+  "probability": 0.5112
+}
+```
+
+Где:
+
+* `request_id` - уникальный идентификатор запроса;
+* `model_version` - версия модели, реально использованная для предсказания;
+* `prediction` - бинарный класс (0 или 1);
+* `probability` - вероятность дефолта (класс 1).
+
+---
+
+### 6.4 Примеры `curl` для A/B
+
+Явный вызов модели `v1`:
+
+```bash
+curl -s -X POST http://127.0.0.1:5000/predict \
+  -H "Content-Type: application/json" \
+  -d '{"user_id":"u1","model_version":"v1","features":{"LIMIT_BAL":20000,"SEX":2,"EDUCATION":2,"MARRIAGE":1,"AGE":24,"PAY_0":2,"PAY_2":2,"PAY_3":-1,"PAY_4":-1,"PAY_5":-2,"PAY_6":-2,"BILL_AMT1":3913,"BILL_AMT2":3102,"BILL_AMT3":689,"BILL_AMT4":0,"BILL_AMT5":0,"BILL_AMT6":0,"PAY_AMT1":0,"PAY_AMT2":689,"PAY_AMT3":0,"PAY_AMT4":0,"PAY_AMT5":0,"PAY_AMT6":0}}'
+```
+
+Явный вызов модели `v2`:
+
+```bash
+curl -s -X POST http://127.0.0.1:5000/predict \
+  -H "Content-Type: application/json" \
+  -d '{"user_id":"u1","model_version":"v2","features":{"LIMIT_BAL":20000,"SEX":2,"EDUCATION":2,"MARRIAGE":1,"AGE":24,"PAY_0":2,"PAY_2":2,"PAY_3":-1,"PAY_4":-1,"PAY_5":-2,"PAY_6":-2,"BILL_AMT1":3913,"BILL_AMT2":3102,"BILL_AMT3":689,"BILL_AMT4":0,"BILL_AMT5":0,"BILL_AMT6":0,"PAY_AMT1":0,"PAY_AMT2":689,"PAY_AMT3":0,"PAY_AMT4":0,"PAY_AMT5":0,"PAY_AMT6":0}}'
+```
+
+Автоматический выбор версии по `user_id` (без `model_version`):
+
+```bash
+curl -s -X POST http://127.0.0.1:5000/predict \
+  -H "Content-Type: application/json" \
+  -d '{"user_id":"u1","features":{"LIMIT_BAL":20000,"SEX":2,"EDUCATION":2,"MARRIAGE":1,"AGE":24,"PAY_0":2,"PAY_2":2,"PAY_3":-1,"PAY_4":-1,"PAY_5":-2,"PAY_6":-2,"BILL_AMT1":3913,"BILL_AMT2":3102,"BILL_AMT3":689,"BILL_AMT4":0,"BILL_AMT5":0,"BILL_AMT6":0,"PAY_AMT1":0,"PAY_AMT2":689,"PAY_AMT3":0,"PAY_AMT4":0,"PAY_AMT5":0,"PAY_AMT6":0}}'
+```
+
+---
+
+### 6.5 Локальный запуск (без Docker)
 
 Из корня репозитория:
 
@@ -230,14 +267,16 @@ python3 -m venv .venv
 source .venv/bin/activate
 # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
+python models/train_model.py
 python -m app.api
 ```
 
-Сервис слушает `http://127.0.0.1:5000`. Нужен файл **`models/model_v1.pkl`**; при отсутствии модели выполните обучение (из корня проекта, с корректным путем к данным в `models/train_model.py`):
+Сервис будет доступен по адресу: `http://127.0.0.1:5000`.
 
-```bash
-python models/train_model.py
-```
+Важно: перед запуском API должны существовать оба артефакта модели:
+
+* `models/model_v1.pkl`
+* `models/model_v2.pkl`
 
 ### 6.5 uWSGI и NGINX в production 
 
@@ -340,7 +379,7 @@ docker compose up --build
 
 ## 10. Бизнес-метрики
 
-Помимо стандартных метрик машинного обучения, в проекте возможно рассматреть использование бизнес-метрик
+Помимо стандартных метрик машинного обучения, в проекте возможно рассмотреть использование бизнес-метрик
 
 ### 10.1 Ожидаемые потери (Expected Loss)
 
@@ -396,7 +435,8 @@ credit-card-ml-deployment/
 │   └── model_handler.py
 ├── models/
 │   ├── train_model.py
-│   └── model_v1.pkl
+│   ├── model_v1.pkl
+│   └── model_v2.pkl
 ├── tests/
 │   └── test_api.py
 ├── docker/
