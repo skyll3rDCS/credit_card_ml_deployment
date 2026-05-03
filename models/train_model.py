@@ -5,10 +5,10 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import classification_report
+from sklearn.ensemble import RandomForestClassifier
 
 # Путь к данным
-DATA_PATH = "/Users/andreygavrilov/Documents/Projects/credit-card-ml-deployment/data/UCI_Credit_Card.csv"
-MODEL_PATH = "./models/model_v1.pkl"
+DATA_PATH = "./data/UCI_Credit_Card.csv"
 
 def load_data():
     df = pd.read_csv(DATA_PATH)
@@ -22,7 +22,7 @@ def load_data():
     return X, y
 
 
-def train():
+def train_and_save(version, model):
     X, y = load_data()
 
     X_train, X_test, y_train, y_test = train_test_split(
@@ -31,7 +31,7 @@ def train():
 
     pipeline = Pipeline([
         ("scaler", StandardScaler()),
-        ("model", LogisticRegression(max_iter=1000))
+        ("model", model)
     ])
 
     pipeline.fit(X_train, y_train)
@@ -43,10 +43,19 @@ def train():
     joblib.dump({
         "model": pipeline,
         "columns": X.columns.tolist()
-    }, MODEL_PATH)
+    }, f"./models/model_{version}.pkl")
     
-    print(f"Model saved to {MODEL_PATH}")
+    print(f"Model saved to ./models/model_{version}.pkl")
 
 
 if __name__ == "__main__":
-    train()
+    # v1 
+    train_and_save("v1", LogisticRegression(max_iter=1000))
+    # v2
+    train_and_save(
+        "v2",
+        RandomForestClassifier(
+            max_depth=5, 
+            random_state=42
+        )
+    )
