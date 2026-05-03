@@ -151,8 +151,6 @@ curl -s http://127.0.0.1:5000/health
 {"status": "ok"}
 ```
 
----
-
 ### 6.2 POST /predict
 
 Назначение:
@@ -208,7 +206,6 @@ curl -s http://127.0.0.1:5000/health
 
 Допускается передача признаков в корне JSON (без поля `features`) для обратной совместимости.
 
----
 
 ### 6.3 Формат ответа `/predict`
 
@@ -228,7 +225,6 @@ curl -s http://127.0.0.1:5000/health
 * `prediction` - бинарный класс (0 или 1);
 * `probability` - вероятность дефолта (класс 1).
 
----
 
 ### 6.4 Примеры `curl` для A/B
 
@@ -256,7 +252,6 @@ curl -s -X POST http://127.0.0.1:5000/predict \
   -d '{"user_id":"u1","features":{"LIMIT_BAL":20000,"SEX":2,"EDUCATION":2,"MARRIAGE":1,"AGE":24,"PAY_0":2,"PAY_2":2,"PAY_3":-1,"PAY_4":-1,"PAY_5":-2,"PAY_6":-2,"BILL_AMT1":3913,"BILL_AMT2":3102,"BILL_AMT3":689,"BILL_AMT4":0,"BILL_AMT5":0,"BILL_AMT6":0,"PAY_AMT1":0,"PAY_AMT2":689,"PAY_AMT3":0,"PAY_AMT4":0,"PAY_AMT5":0,"PAY_AMT6":0}}'
 ```
 
----
 
 ### 6.5 Локальный запуск (без Docker)
 
@@ -278,7 +273,7 @@ python -m app.api
 * `models/model_v1.pkl`
 * `models/model_v2.pkl`
 
-### 6.5 uWSGI и NGINX в production 
+### 6.6 uWSGI и NGINX в production 
 
 Использование uWSGI и NGINX - это стандартная production-связка для веб-приложений:
 
