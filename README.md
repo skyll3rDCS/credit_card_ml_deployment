@@ -435,6 +435,7 @@ credit-card-ml-deployment/
 │   ├── model_v1.pkl
 │   └── model_v2.pkl
 ├── tests/
+│   ├── run_test.png
 │   └── test_api.py
 ├── docker/
 │   └── Dockerfile
